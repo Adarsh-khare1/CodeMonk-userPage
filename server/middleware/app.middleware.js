@@ -3,29 +3,12 @@ import cors from 'cors';
 
 export const setupMiddleware = (app) => {
   try {
-    // CORS middleware - Allow both React app and Live Server
-    const allowedOrigins = [
-      'http://localhost:3000',  // React development server
-      'http://127.0.0.1:5500',  // Live Server
-      'http://localhost:5500',  // Alternative Live Server
-      process.env.CLIENT_URL
-    ].filter(Boolean);
-
+    // CORS middleware
     app.use(cors({
-      origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, etc.)
-        if (!origin) return callback(null, true);
-
-        if (allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        } else {
-          console.warn('⚠️ CORS blocked request from origin:', origin);
-          return callback(new Error('Not allowed by CORS'));
-        }
-      },
+      origin: process.env.CLIENT_URL || 'http://localhost:3000',
       credentials: true
     }));
-    console.log('✅ CORS middleware configured for origins:', allowedOrigins);
+    console.log('✅ CORS middleware configured');
 
     // Body parsing middleware with error handling
     app.use(express.json({

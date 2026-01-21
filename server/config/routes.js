@@ -38,12 +38,6 @@ export const setupRoutes = (app) => {
       next();
     }, chatbotRoutes);
 
-    // Add simple chat endpoint for compatibility with your existing frontend
-    app.use('/chat', (req, res, next) => {
-      console.log('💬 Simple chat route accessed:', req.method, req.url);
-      next();
-    }, chatbotRoutes);
-
     // Health check with detailed logging
     app.get('/api/health', (req, res) => {
       console.log('🏥 Health check requested');

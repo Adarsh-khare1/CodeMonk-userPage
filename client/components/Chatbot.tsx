@@ -1,8 +1,6 @@
-"use client";
-
-import { useState, useRef, useEffect } from "react";
-import { Send, X, Bot } from "lucide-react";
-import api from "@/lib/api";
+import { useState, useRef, useEffect } from 'react';
+import { MessageCircle, Send, X, Bot } from 'lucide-react';
+import api from '@/lib/api';
 
 interface Message {
   id: string;
@@ -30,19 +28,22 @@ export default function Chatbot({
 }: ChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: "1",
+      id: '1',
       content: `Hi! I'm your coding assistant. I can help you with the "${problemTitle}" problem. Feel free to ask me questions about the problem, algorithms, or debugging your code!`,
       isUser: false,
       timestamp: new Date(),
     },
   ]);
-
-  const [inputMessage, setInputMessage] = useState("");
+  const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollToBottom();
   }, [messages]);
 
   const sendMessage = async () => {
@@ -55,20 +56,14 @@ export default function Chatbot({
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputMessage("");
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
     setIsLoading(true);
 
     try {
-      const response = await api.post("/api/chatbot/chat", {
+      // Send message to chatbot API
+      const response = await api.post('/chatbot/chat', {
         message: inputMessage,
-        problemTitle,
-        userCode,
-        language,
-        conversationHistory: messages.slice(1).map((msg) => ({
-          content: msg.content,
-          isUser: msg.isUser,
-        })),
       });
 
       const botMessage: Message = {
@@ -78,28 +73,22 @@ export default function Chatbot({
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, botMessage]);
+      setMessages(prev => [...prev, botMessage]);
     } catch (error: any) {
-      console.error(
-        "Chatbot API error:",
-        error?.response?.data || error?.message || error
-      );
-
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "Server error. Check terminal for real cause.",
+        content: 'Sorry, I encountered an error. Please try again later.',
         isUser: false,
         timestamp: new Date(),
       };
-
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
@@ -115,7 +104,10 @@ export default function Chatbot({
           <Bot className="h-5 w-5 text-blue-400" />
           <span className="font-semibold text-white">Coding Assistant</span>
         </div>
-        <button onClick={onClose} className="text-gray-400 hover:text-white">
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-white transition"
+        >
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -125,24 +117,20 @@ export default function Chatbot({
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex ${
-              message.isUser ? "justify-end" : "justify-start"
-            }`}
+            className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
           >
             <div
               className={`max-w-[80%] p-3 rounded-lg ${
                 message.isUser
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-700 text-gray-100"
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-700 text-gray-100'
               }`}
             >
-              <p className="text-sm whitespace-pre-wrap">
-                {message.content}
-              </p>
-              <span className="text-xs opacity-70 block mt-1">
+              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              <span className="text-xs opacity-70 mt-1 block">
                 {message.timestamp.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
+                  hour: '2-digit',
+                  minute: '2-digit',
                 })}
               </span>
             </div>
@@ -151,8 +139,11 @@ export default function Chatbot({
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-gray-700 p-3 rounded-lg text-sm">
-              Thinking...
+            <div className="bg-gray-700 text-gray-100 p-3 rounded-lg">
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+                <span className="text-sm">Thinking...</span>
+              </div>
             </div>
           </div>
         )}
@@ -166,15 +157,15 @@ export default function Chatbot({
           <textarea
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder="Ask me anything..."
+            onKeyPress={handleKeyPress}
+            placeholder="Ask me anything about this problem..."
+            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none min-h-[40px] max-h-[100px]"
             rows={1}
-            className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
           />
           <button
             onClick={sendMessage}
             disabled={!inputMessage.trim() || isLoading}
-            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg disabled:opacity-50"
+            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg disabled:opacity-50 transition"
           >
             <Send className="h-4 w-4" />
           </button>

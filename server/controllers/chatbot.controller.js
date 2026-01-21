@@ -1,41 +1,56 @@
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import fetch from 'node-fetch'; // You'll need to install this: npm install node-fetch
 
 export const chatWithAI = async (req, res) => {
+  const { message, problemId, problemTitle, userCode, language, conversationHistory = [] } = req.body;
+
+  if (!message) {
+    return res.status(400).json({ reply: "Message is required", tokensUsed: 0 });
+  }
+
   try {
-    const { message } = req.body;
+    console.log('🤖 Calling your chatbot API:', { message: message.substring(0, 100) });
 
-    if (!message) {
-      return res.status(400).json({
-        reply: "Message is required",
-        tokensUsed: 0,
-      });
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: "You are a helpful coding assistant." },
-        { role: "user", content: message },
-      ],
-      max_tokens: 500,
+    // Replace this with your chatbot API call
+    const response = await fetch('YOUR_CHATBOT_API_URL', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer YOUR_API_KEY` // If needed
+      },
+      body: JSON.stringify({
+        message: message,
+        context: {
+          problemTitle,
+          userCode,
+          language,
+          conversationHistory
+        }
+      })
     });
 
-    const reply =
-      completion.choices?.[0]?.message?.content ||
-      "⚠️ No response from AI.";
+    if (!response.ok) {
+      throw new Error(`Chatbot API error: ${response.status}`);
+    }
 
-    const tokensUsed = completion.usage?.total_tokens || 0;
+    const data = await response.json();
 
-    res.json({ reply, tokensUsed });
+    // Adapt this based on your chatbot's response format
+    const reply = data.response || data.message || data.reply || "Sorry, I couldn't get a response.";
+
+    console.log('✅ Chatbot response received:', { replyLength: reply.length });
+
+    res.json({
+      reply,
+      tokensUsed: data.tokensUsed || 0
+    });
+
   } catch (error) {
-    console.error("❌ OpenAI Error:", error);
-    res.status(500).json({
-      reply: "⚠️ Server error",
-      tokensUsed: 0,
+    console.error('❌ Chatbot API error:', error);
+
+    // Fallback response
+    res.json({
+      reply: "I'm having trouble connecting right now. Please try again later.",
+      tokensUsed: 0
     });
   }
 };
