@@ -1,0 +1,676 @@
+// Judge service - evaluates code against test cases for multiple languages
+import { exec, execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Language configurations
+const LANGUAGE_CONFIGS = {
+  javascript: {
+    extension: 'js',
+    compileCommand: null,
+    runCommand: 'node {file}',
+    timeout: 5000,
+  },
+  python: {
+    extension: 'py',
+    compileCommand: null,
+    runCommand: 'python {file}',
+    timeout: 5000,
+  },
+  cpp: {
+    extension: 'cpp',
+    compileCommand: 'g++ {file} -o {output} -std=c++17',
+    runCommand: '{output}',
+    timeout: 5000,
+  },
+  c: {
+    extension: 'c',
+    compileCommand: 'gcc {file} -o {output} -std=c99',
+    runCommand: '{output}',
+    timeout: 5000,
+  },
+  java: {
+    extension: 'java',
+    compileCommand: 'javac {file}',
+    runCommand: 'java {className}',
+    timeout: 5000,
+  },
+};
+
+// Create temporary directory for code execution
+const createTempDir = () => {
+  const tempDir = path.join(__dirname, '..', 'temp');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+  return tempDir;
+};
+
+// Execute code with timeout
+const executeWithTimeout = (command, timeout, input = '') => {
+  return new Promise((resolve, reject) => {
+    const child = exec(command, { timeout }, (error, stdout, stderr) => {
+      if (error) {
+        if (error.code === 'ETIMEDOUT') {
+          reject(new Error('Time Limit Exceeded'));
+        } else {
+          reject(new Error(stderr || error.message));
+        }
+      } else {
+        resolve(stdout.trim());
+      }
+    });
+
+    if (input) {
+      child.stdin.write(input);
+      child.stdin.end();
+    }
+  });
+};
+
+// Compile code if needed
+const compileCode = async (language, filePath, outputPath = null) => {
+  const config = LANGUAGE_CONFIGS[language];
+  if (!config.compileCommand) return null;
+
+  let compileCmd = config.compileCommand
+    .replace('{file}', filePath)
+    .replace('{output}', outputPath);
+
+  if (language === 'java') {
+    // For Java, extract class name from file
+    const className = path.basename(filePath, '.java');
+    compileCmd = `javac ${filePath}`;
+  }
+
+  try {
+    await executeWithTimeout(compileCmd, 10000);
+    return outputPath;
+  } catch (error) {
+    throw new Error(`Compilation Error: ${error.message}`);
+  }
+};
+
+// Run compiled/interpreted code
+const runCode = async (language, filePath, input = '', timeout = 5000) => {
+  const config = LANGUAGE_CONFIGS[language];
+  let runCmd = config.runCommand.replace('{file}', filePath);
+
+  if (language === 'cpp' || language === 'c') {
+    const outputPath = filePath.replace(/\.(cpp|c)$/, '');
+    runCmd = runCmd.replace('{output}', outputPath);
+  } else if (language === 'java') {
+    const className = path.basename(filePath, '.java');
+    runCmd = `java ${className}`;
+  }
+
+  try {
+    const output = await executeWithTimeout(runCmd, timeout, input);
+    return output;
+  } catch (error) {
+    if (error.message.includes('Time Limit Exceeded')) {
+      throw new Error('Time Limit Exceeded');
+    }
+    throw new Error(`Runtime Error: ${error.message}`);
+  }
+};
+
+// Judge submission for any supported language
+export const judgeSubmission = async (code, testCases, language = 'javascript') => {
+  const startTime = Date.now();
+  const config = LANGUAGE_CONFIGS[language];
+
+  if (!config) {
+    return {
+      status: 'Compilation Error',
+      error: `Unsupported language: ${language}`,
+      results: [],
+      passed: 0,
+      total: testCases.length,
+      executionTime: 0,
+      memoryUsed: 0,
+    };
+  }
+
+  const tempDir = createTempDir();
+  const fileName = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const filePath = path.join(tempDir, `${fileName}.${config.extension}`);
+
+  try {
+    // Write code to file
+    fs.writeFileSync(filePath, code);
+
+    // Compile if needed
+    if (config.compileCommand) {
+      await compileCode(language, filePath);
+    }
+
+    // Run test cases
+    const results = [];
+    let passed = 0;
+
+    for (let i = 0; i < testCases.length; i++) {
+      const testCase = testCases[i];
+      try {
+        const output = await runCode(language, filePath, testCase.input, config.timeout);
+
+        // Compare output (trim whitespace and normalize line endings)
+        const expected = testCase.expectedOutput.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const actual = output.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+        const isPassed = actual === expected;
+        if (isPassed) passed++;
+
+        results.push({
+          testCase: i + 1,
+          input: testCase.input,
+          expected: testCase.expectedOutput,
+          actual: output,
+          passed: isPassed,
+        });
+      } catch (error) {
+        results.push({
+          testCase: i + 1,
+          input: testCase.input,
+          expected: testCase.expectedOutput,
+          actual: '',
+          passed: false,
+          error: error.message,
+        });
+      }
+    }
+
+    const executionTime = Date.now() - startTime;
+    const status = passed === testCases.length ? 'Accepted' : 'Wrong Answer';
+
+    return {
+      status,
+      results,
+      passed,
+      total: testCases.length,
+      executionTime,
+      memoryUsed: 0, // Would need more complex monitoring for memory usage
+    };
+
+  } catch (error) {
+    return {
+      status: 'Compilation Error',
+      error: error.message,
+      results: [],
+      passed: 0,
+      total: testCases.length,
+      executionTime: Date.now() - startTime,
+      memoryUsed: 0,
+    };
+  } finally {
+    // Clean up temporary files
+    try {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      // Clean up compiled files
+      if (language === 'cpp' || language === 'c') {
+        const outputPath = filePath.replace(/\.(cpp|c)$/, '');
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      } else if (language === 'java') {
+        const className = path.basename(filePath, '.java');
+        const classFile = path.join(tempDir, `${className}.class`);
+        if (fs.existsSync(classFile)) fs.unlinkSync(classFile);
+      }
+    } catch (cleanupError) {
+      console.error('Error cleaning up temp files:', cleanupError);
+    }
+  }
+};
+
+// Run sample tests (similar to judgeSubmission but only for sample test cases)
+export const runSampleTests = async (code, sampleTests, language = 'javascript') => {
+  const config = LANGUAGE_CONFIGS[language];
+
+  if (!config) {
+    return {
+      status: 'Error',
+      error: `Unsupported language: ${language}`,
+      results: [],
+    };
+  }
+
+  const tempDir = createTempDir();
+  const fileName = `sample_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const filePath = path.join(tempDir, `${fileName}.${config.extension}`);
+
+  try {
+    fs.writeFileSync(filePath, code);
+
+    if (config.compileCommand) {
+      await compileCode(language, filePath);
+    }
+
+    const results = [];
+
+    for (let i = 0; i < sampleTests.length; i++) {
+      const test = sampleTests[i];
+      try {
+        const output = await runCode(language, filePath, test.input, config.timeout);
+
+        const expected = test.output.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const actual = output.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+        results.push({
+          testCase: i + 1,
+          input: test.input,
+          expected: test.output,
+          actual: output,
+          passed: actual === expected,
+        });
+      } catch (error) {
+        results.push({
+          testCase: i + 1,
+          input: test.input,
+          expected: test.output,
+          actual: '',
+          passed: false,
+          error: error.message,
+        });
+      }
+    }
+
+    return {
+      status: 'Completed',
+      results,
+    };
+
+  } catch (error) {
+    return {
+      status: 'Error',
+      error: error.message,
+      results: [],
+    };
+  } finally {
+    try {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      if (language === 'cpp' || language === 'c') {
+        const outputPath = filePath.replace(/\.(cpp|c)$/, '');
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      } else if (language === 'java') {
+        const className = path.basename(filePath, '.java');
+        const classFile = path.join(tempDir, `${className}.class`);
+        if (fs.existsSync(classFile)) fs.unlinkSync(classFile);
+      }
+    } catch (cleanupError) {
+      console.error('Error cleaning up temp files:', cleanupError);
+    }
+  }
+};
+//         results: [],
+//         passed: 0,
+//         total: 0,
+//         executionTime: 0,
+//         memoryUsed: 0,
+//       };
+//     }
+    
+//     // Test each test case
+//     for (const testCase of testCases) {
+//       if (testCase.isPublic) {
+//         try {
+//           // Parse input from test case format
+//           let inputArgs;
+//           try {
+//             // Handle different input formats
+//             const inputStr = testCase.input.trim();
+            
+//             // Handle array and number inputs like "[2,7,11,15], 9"
+//             if (inputStr.includes('],')) {
+//               const parts = inputStr.split('],');
+//               const arrayPart = parts[0] + ']';
+//               const otherArgs = parts.slice(1).map(s => s.trim());
+//               inputArgs = [eval(arrayPart), ...otherArgs.map(s => {
+//                 // Try to parse as number or keep as string
+//                 if (!isNaN(s) && s.trim() !== '') return Number(s);
+//                 // Handle quoted strings
+//                 if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+//                   return s.slice(1, -1);
+//                 }
+//                 return s;
+//               })];
+//             } else if (inputStr.startsWith('[') && inputStr.endsWith(']')) {
+//               // Single array input
+//               inputArgs = [eval(inputStr)];
+//             } else if (inputStr.startsWith('"') || inputStr.startsWith("'")) {
+//               // String input
+//               inputArgs = [eval(inputStr)];
+//             } else if (!isNaN(inputStr)) {
+//               // Number input
+//               inputArgs = [Number(inputStr)];
+//             } else {
+//               // Try to evaluate as-is
+//               inputArgs = [eval(inputStr)];
+//             }
+//           } catch (parseError) {
+//             results.push({
+//               input: testCase.input,
+//               expectedOutput: testCase.expectedOutput,
+//               actualOutput: `Input parsing error: ${parseError.message}`,
+//               passed: false,
+//             });
+//             continue;
+//           }
+          
+//           // Execute the function
+//           const startTime = Date.now();
+//           const actualOutput = userFunction(...inputArgs);
+//           const executionTime = Date.now() - startTime;
+          
+//           // Parse expected output
+//           let expectedOutput;
+//           try {
+//             const expStr = testCase.expectedOutput.trim();
+//             if (expStr === 'true' || expStr === 'false') {
+//               expectedOutput = expStr === 'true';
+//             } else if (expStr.startsWith('[') || expStr.startsWith('{')) {
+//               expectedOutput = JSON.stringify(eval(expStr));
+//             } else if (!isNaN(expStr)) {
+//               expectedOutput = Number(expStr);
+//             } else if (expStr.startsWith('"') || expStr.startsWith("'")) {
+//               expectedOutput = expStr.slice(1, -1);
+//             } else {
+//               expectedOutput = eval(expStr);
+//             }
+//           } catch (e) {
+//             expectedOutput = testCase.expectedOutput;
+//           }
+          
+//           // Compare outputs
+//           let actualStr = String(actualOutput);
+//           let expectedStr = String(expectedOutput);
+          
+//           // For arrays/objects, use JSON comparison
+//           if (typeof actualOutput === 'object' || Array.isArray(actualOutput)) {
+//             actualStr = JSON.stringify(actualOutput);
+//           }
+//           if (typeof expectedOutput === 'object' || Array.isArray(expectedOutput)) {
+//             expectedStr = JSON.stringify(expectedOutput);
+//           }
+          
+//           // Normalize comparison (handle number strings)
+//           const actualNum = Number(actualStr);
+//           const expectedNum = Number(expectedStr);
+//           const isNumeric = !isNaN(actualNum) && !isNaN(expectedNum) && actualStr.trim() !== '' && expectedStr.trim() !== '';
+          
+//           const isEqual = isNumeric 
+//             ? actualNum === expectedNum 
+//             : actualStr === expectedStr;
+          
+//           const testPassed = isEqual;
+          
+//           results.push({
+//             input: testCase.input,
+//             expectedOutput: String(expectedOutput),
+//             actualOutput: String(actualOutput),
+//             passed: testPassed,
+//             executionTime,
+//           });
+          
+//           if (testPassed) {
+//             passed++;
+//           }
+//         } catch (error) {
+//           results.push({
+//             input: testCase.input,
+//             expectedOutput: testCase.expectedOutput,
+//             actualOutput: `Runtime Error: ${error.message}`,
+//             passed: false,
+//           });
+//         }
+//       }
+//     }
+    
+//     const allPassed = passed === testCases.filter(tc => tc.isPublic).length;
+//     const totalExecutionTime = results.reduce((sum, r) => sum + (r.executionTime || 0), 0);
+    
+//     return {
+//       status: allPassed ? 'Accepted' : 'Wrong Answer',
+//       results,
+//       passed,
+//       total: testCases.filter(tc => tc.isPublic).length,
+//       executionTime: totalExecutionTime,
+//       memoryUsed: Math.floor(Math.random() * 5000) + 1000, // Simulated memory
+//     };
+//   } catch (error) {
+//     return {
+//       status: 'Runtime Error',
+//       error: error.message,
+//       results: [],
+//       passed: 0,
+//       total: 0,
+//       executionTime: 0,
+//       memoryUsed: 0,
+//     };
+//   }
+// };
+
+// // Run code against sample test cases only (does not save submission)
+// export const runSampleTests = async (code, sampleTestCases) => {
+//   try {
+//     if (!sampleTestCases || sampleTestCases.length === 0) {
+//       return { results: [], error: 'No sample test cases provided' };
+//     }
+
+//     // Extract function name from code
+//     let functionName = null;
+//     let userFunction;
+    
+//     const functionPatterns = [
+//       /function\s+(\w+)\s*\(/,
+//       /const\s+(\w+)\s*=\s*function\s*\(/,
+//       /const\s+(\w+)\s*=\s*\(/,
+//       /let\s+(\w+)\s*=\s*function\s*\(/,
+//       /let\s+(\w+)\s*=\s*\(/,
+//       /var\s+(\w+)\s*=\s*function\s*\(/,
+//     ];
+    
+//     for (const pattern of functionPatterns) {
+//       const match = code.match(pattern);
+//       if (match) {
+//         functionName = match[1];
+//         break;
+//       }
+//     }
+    
+//     if (!functionName) {
+//       return { results: [], error: 'Function not found in code' };
+//     }
+    
+//     try {
+//       const Function = global.Function;
+//       const wrappedCode = `
+//         ${code}
+//         return typeof ${functionName} === 'function' ? ${functionName} : null;
+//       `;
+//       userFunction = new Function(wrappedCode)();
+      
+//       if (!userFunction || typeof userFunction !== 'function') {
+//         return { results: [], error: `Function ${functionName} is not defined or is not a function` };
+//       }
+//     } catch (error) {
+//       return { results: [], error: `Compilation Error: ${error.message}` };
+//     }
+
+//     const results = [];
+    
+//     for (const testCase of sampleTestCases) {
+//       try {
+//         let inputArgs;
+//         try {
+//           const inputStr = testCase.input.trim();
+//           if (inputStr.includes('],')) {
+//             const parts = inputStr.split('],');
+//             const arrayPart = parts[0] + ']';
+//             const otherArgs = parts.slice(1).map(s => {
+//               s = s.trim();
+//               if (!isNaN(s) && s.trim() !== '') return Number(s);
+//               if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+//                 return s.slice(1, -1);
+//               }
+//               return s;
+//             });
+//             inputArgs = [eval(arrayPart), ...otherArgs];
+//           } else if (inputStr.startsWith('[') && inputStr.endsWith(']')) {
+//             inputArgs = [eval(inputStr)];
+//           } else if (inputStr.startsWith('"') || inputStr.startsWith("'")) {
+//             inputArgs = [eval(inputStr)];
+//           } else if (!isNaN(inputStr)) {
+//             inputArgs = [Number(inputStr)];
+//           } else {
+//             inputArgs = [eval(inputStr)];
+//           }
+//         } catch (parseError) {
+//           results.push({
+//             input: testCase.input,
+//             expectedOutput: testCase.output,
+//             actualOutput: `Input parsing error: ${parseError.message}`,
+//             passed: false,
+//           });
+//           continue;
+//         }
+        
+//         const startTime = Date.now();
+//         const actualOutput = userFunction(...inputArgs);
+//         const executionTime = Date.now() - startTime;
+        
+//         let expectedOutput;
+//         try {
+//           const expStr = testCase.output.trim();
+//           if (expStr === 'true' || expStr === 'false') {
+//             expectedOutput = expStr === 'true';
+//           } else if (expStr.startsWith('[') || expStr.startsWith('{')) {
+//             expectedOutput = JSON.stringify(eval(expStr));
+//           } else if (!isNaN(expStr)) {
+//             expectedOutput = Number(expStr);
+//           } else if (expStr.startsWith('"') || expStr.startsWith("'")) {
+//             expectedOutput = expStr.slice(1, -1);
+//           } else {
+//             expectedOutput = eval(expStr);
+//           }
+//         } catch (e) {
+//           expectedOutput = testCase.output;
+//         }
+        
+//         let actualStr = String(actualOutput);
+//         let expectedStr = String(expectedOutput);
+        
+//         if (typeof actualOutput === 'object' || Array.isArray(actualOutput)) {
+//           actualStr = JSON.stringify(actualOutput);
+//         }
+//         if (typeof expectedOutput === 'object' || Array.isArray(expectedOutput)) {
+//           expectedStr = JSON.stringify(expectedOutput);
+//         }
+        
+//         const actualNum = Number(actualStr);
+//         const expectedNum = Number(expectedStr);
+//         const isNumeric = !isNaN(actualNum) && !isNaN(expectedNum) && actualStr.trim() !== '' && expectedStr.trim() !== '';
+        
+//         const isEqual = isNumeric 
+//           ? actualNum === expectedNum 
+//           : actualStr === expectedStr;
+        
+//         results.push({
+//           input: testCase.input,
+//           expectedOutput: String(expectedOutput),
+//           actualOutput: String(actualOutput),
+//           passed: isEqual,
+//           executionTime,
+//         });
+//       } catch (error) {
+//         results.push({
+//           input: testCase.input,
+//           expectedOutput: testCase.output,
+//           actualOutput: `Runtime Error: ${error.message}`,
+//           passed: false,
+//         });
+//       }
+//     }
+    
+//     return { results };
+//   } catch (error) {
+//     return { results: [], error: error.message };
+//   }
+// };
+
+
+// services/judge.service.js
+
+// ⚠️ This is still a MOCK judge (MVP-safe)
+
+export const runSampleTests = async (code, sampleTestCases) => {
+  const results = [];
+
+  for (let i = 0; i < sampleTestCases.length; i++) {
+    const tc = sampleTestCases[i];
+
+    // Fake execution logic (replace later with real sandbox)
+    const passed = Math.random() > 0.2;
+
+    results.push({
+      testCase: i + 1,
+      input: tc.input,
+      expectedOutput: tc.output,
+      actualOutput: passed ? tc.output : 'Wrong Output',
+      passed,
+    });
+  }
+
+  return results;
+};
+
+export const judgeSubmission = async (code, testCases) => {
+  const results = [];
+  let executionTime = 0;
+
+  for (let i = 0; i < testCases.length; i++) {
+    const tc = testCases[i];
+
+    // Mock behavior
+    const passed = Math.random() > 0.3;
+    executionTime += Math.floor(Math.random() * 100);
+
+    if (!passed) {
+      return {
+        status: 'Wrong Answer',
+        executionTime,
+        memoryUsed: Math.floor(Math.random() * 10000),
+        failedTest: {
+          testCase: i + 1,
+          input: tc.input,
+          expectedOutput: tc.expectedOutput,
+          actualOutput: 'Wrong Output',
+        },
+        results: [
+          {
+            input: tc.input,
+            expectedOutput: tc.expectedOutput,
+            actualOutput: 'Wrong Output',
+            passed: false,
+          },
+        ],
+      };
+    }
+
+    results.push({
+      input: tc.input,
+      expectedOutput: tc.expectedOutput,
+      actualOutput: tc.expectedOutput,
+      passed: true,
+    });
+  }
+
+  return {
+    status: 'Accepted',
+    executionTime,
+    memoryUsed: Math.floor(Math.random() * 10000),
+    results,
+  };
+};
