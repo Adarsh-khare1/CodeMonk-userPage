@@ -7,8 +7,15 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Coding Practice Platform',
-  description: 'LeetCode-style coding platform with AI feedback',
+  title: 'CodeMonk',
+  description: 'Coding platform with AI feedback',
+
+  // ✅ LOGO / FAVICON CONFIG
+  icons: {
+    icon: '/CodeLogo2.png',
+    shortcut: '/CodeLogo2.png',
+    apple: '/CodeLogo2.png',
+  },
 }
 
 export default function RootLayout({

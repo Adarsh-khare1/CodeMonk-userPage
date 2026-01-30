@@ -1,171 +1,190 @@
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import Problem from '../models/Problem.model.js';
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import Problem from "../models/Problem.model.js";
 
 dotenv.config();
 
-const problems = [
-  {
-    title: 'Two Sum',
-    description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input would have exactly one solution, and you may not use the same element twice.',
-    difficulty: 'Easy',
-    category: ['Array', 'Hash Table'],
-    starterCode: `function twoSum(nums, target) {
-    // Your code here
-    return [];
-}`,
-    sampleTestCases: [
-      { input: '[2,7,11,15], 9', output: '[0,1]', explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].' },
-      { input: '[3,2,4], 6', output: '[1,2]', explanation: 'Because nums[1] + nums[2] == 6, we return [1, 2].' },
-      { input: '[3,3], 6', output: '[0,1]', explanation: 'Because nums[0] + nums[1] == 6, we return [0, 1].' },
-    ],
-    testCases: [
-      { input: '[2,7,11,15], 9', expectedOutput: '[0,1]', isPublic: false },
-      { input: '[3,2,4], 6', expectedOutput: '[1,2]', isPublic: false },
-      { input: '[3,3], 6', expectedOutput: '[0,1]', isPublic: false },
-      { input: '[1,2,3,4,5], 8', expectedOutput: '[2,4]', isPublic: false },
-      { input: '[0,4,3,0], 0', expectedOutput: '[0,3]', isPublic: false },
-    ],
-    constraints: '2 <= nums.length <= 10^4',
-    attemptsCount: 0,
-    acceptedCount: 0,
-  },
-  {
-    title: 'Best Time to Buy and Sell Stock',
-    description: 'You are given an array prices where prices[i] is the price of a given stock on the ith day. You want to maximize your profit by choosing a single day to buy one stock and choosing a different day in the future to sell that stock. Return the maximum profit you can achieve from this transaction. If you cannot achieve any profit, return 0.',
-    difficulty: 'Easy',
-    category: ['Array', 'Dynamic Programming'],
-    starterCode: `function maxProfit(prices) {
-    // Your code here
-    return 0;
-}`,
-    sampleTestCases: [
-      { input: '[7,1,5,3,6,4]', output: '5', explanation: 'Buy on day 2 (price = 1) and sell on day 5 (price = 6), profit = 6-1 = 5.' },
-      { input: '[7,6,4,3,1]', output: '0', explanation: 'In this case, no transactions are done and the max profit = 0.' },
-    ],
-    testCases: [
-      { input: '[7,1,5,3,6,4]', expectedOutput: '5', isPublic: false },
-      { input: '[7,6,4,3,1]', expectedOutput: '0', isPublic: false },
-      { input: '[1,2,3,4,5]', expectedOutput: '4', isPublic: false },
-      { input: '[2,1,2,1,0,1,2]', expectedOutput: '2', isPublic: false },
-    ],
-    constraints: '1 <= prices.length <= 10^5',
-    attemptsCount: 0,
-    acceptedCount: 0,
-  },
-  {
-    title: 'Longest Substring Without Repeating Characters',
-    description: 'Given a string s, find the length of the longest substring without repeating characters.',
-    difficulty: 'Medium',
-    category: ['String', 'Hash Table', 'Sliding Window'],
-    starterCode: `function lengthOfLongestSubstring(s) {
-    // Your code here
-    return 0;
-}`,
-    sampleTestCases: [
-      { input: '"abcabcbb"', output: '3', explanation: 'The answer is "abc", with the length of 3.' },
-      { input: '"bbbbb"', output: '1', explanation: 'The answer is "b", with the length of 1.' },
-      { input: '"pwwkew"', output: '3', explanation: 'The answer is "wke", with the length of 3.' },
-    ],
-    testCases: [
-      { input: '"abcabcbb"', expectedOutput: '3', isPublic: false },
-      { input: '"bbbbb"', expectedOutput: '1', isPublic: false },
-      { input: '"pwwkew"', expectedOutput: '3', isPublic: false },
-      { input: '""', expectedOutput: '0', isPublic: false },
-      { input: '"au"', expectedOutput: '2', isPublic: false },
-      { input: '"dvdf"', expectedOutput: '3', isPublic: false },
-    ],
-    constraints: '0 <= s.length <= 5 * 10^4',
-    attemptsCount: 0,
-    acceptedCount: 0,
-  },
-  {
-    title: 'Container With Most Water',
-    description: 'You are given an integer array height of length n. There are n vertical lines drawn such that the two endpoints of the ith line are (i, 0) and (i, height[i]). Find two lines that together with the x-axis form a container, such that the container contains the most water. Return the maximum amount of water a container can store.',
-    difficulty: 'Medium',
-    category: ['Array', 'Two Pointers'],
-    starterCode: `function maxArea(height) {
-    // Your code here
-    return 0;
-}`,
-    sampleTestCases: [
-      { input: '[1,8,6,2,5,4,8,3,7]', output: '49', explanation: 'The vertical lines are represented by array [1,8,6,2,5,4,8,3,7]. In this case, the max area of water (blue section) the container can contain is 49.' },
-    ],
-    testCases: [
-      { input: '[1,8,6,2,5,4,8,3,7]', expectedOutput: '49', isPublic: false },
-      { input: '[1,1]', expectedOutput: '1', isPublic: false },
-      { input: '[4,3,2,1,4]', expectedOutput: '16', isPublic: false },
-    ],
-    constraints: 'n == height.length, 2 <= n <= 10^5',
-    attemptsCount: 0,
-    acceptedCount: 0,
-  },
-  {
-    title: 'Climbing Stairs',
-    description: 'You are climbing a staircase. It takes n steps to reach the top. Each time you can either climb 1 or 2 steps. In how many distinct ways can you climb to the top?',
-    difficulty: 'Easy',
-    category: ['Math', 'Dynamic Programming'],
-    starterCode: `function climbStairs(n) {
-    // Your code here
-    return 0;
-}`,
-    sampleTestCases: [
-      { input: '2', output: '2', explanation: 'There are two ways to climb to the top: 1 step + 1 step, 2 steps' },
-      { input: '3', output: '3', explanation: 'There are three ways: 1+1+1, 1+2, 2+1' },
-    ],
-    testCases: [
-      { input: '2', expectedOutput: '2', isPublic: false },
-      { input: '3', expectedOutput: '3', isPublic: false },
-      { input: '5', expectedOutput: '8', isPublic: false },
-      { input: '10', expectedOutput: '89', isPublic: false },
-    ],
-    constraints: '1 <= n <= 45',
-    attemptsCount: 0,
-    acceptedCount: 0,
-  },
-  {
-    title: 'Valid Parentheses',
-    description: 'Given a string s containing just the characters \'(\', \')\', \'{\', \'}\', \'[\' and \']\', determine if the input string is valid.',
-    difficulty: 'Easy',
-    category: ['String', 'Stack'],
-    starterCode: `function isValid(s) {
-    // Your code here
-    return false;
-}`,
-    sampleTestCases: [
-      { input: '"()"', output: 'true', explanation: 'Valid parentheses' },
-      { input: '"()[]{}"', output: 'true', explanation: 'Valid parentheses' },
-      { input: '"(]"', output: 'false', explanation: 'Invalid parentheses' },
-    ],
-    testCases: [
-      { input: '"()"', expectedOutput: 'true', isPublic: false },
-      { input: '"()[]{}"', expectedOutput: 'true', isPublic: false },
-      { input: '"(]"', expectedOutput: 'false', isPublic: false },
-      { input: '"([)]"', expectedOutput: 'false', isPublic: false },
-      { input: '"{[]}"', expectedOutput: 'true', isPublic: false },
-    ],
-    constraints: '1 <= s.length <= 10^4',
-    attemptsCount: 0,
-    acceptedCount: 0,
-  },
+const ADMIN_ID = new mongoose.Types.ObjectId("64f000000000000000000001");
+
+// ============================
+// Helper functions
+// ============================
+
+// Convert JSON array string to space-separated numbers for C/C++
+function arrayToSpaceSeparated(input) {
+  if (input.startsWith("[") && input.endsWith("]")) {
+    return input.slice(1, -1).split(",").map(s => s.trim()).join(" ");
+  }
+  return input;
+}
+
+// ============================
+// Test cases
+// ============================
+
+const twoSumSamples = [
+  { input: arrayToSpaceSeparated("[2,7,11,15]") + " 9", output: "[0,1]" },
+  { input: arrayToSpaceSeparated("[3,3]") + " 6", output: "[0,1]" }
 ];
 
-async function seed() {
+const twoSumHidden = [
+  { input: arrayToSpaceSeparated("[3,2,4]") + " 6", output: "[1,2]" },
+  { input: arrayToSpaceSeparated("[1,5,7,9]") + " 10", output: "[0,3]" },
+  { input: arrayToSpaceSeparated("[10,20,30,40]") + " 50", output: "[0,3]" },
+  { input: arrayToSpaceSeparated("[4,6,8,2]") + " 10", output: "[0,1]" },
+  { input: arrayToSpaceSeparated("[5,5,5,5]") + " 10", output: "[0,1]" },
+  { input: arrayToSpaceSeparated("[0,4,3,0]") + " 0", output: "[0,3]" },
+  { input: arrayToSpaceSeparated("[1,2,3,4,5]") + " 9", output: "[3,4]" },
+  { input: arrayToSpaceSeparated("[2,11,7,15]") + " 9", output: "[0,2]" },
+  { input: arrayToSpaceSeparated("[3,8,12,4]") + " 16", output: "[1,2]" },
+  { input: arrayToSpaceSeparated("[6,3,5,9]") + " 14", output: "[2,3]" }
+];
+
+const reverseSamples = [
+  { input: '"hello"', output: '"olleh"' },
+  { input: '"abc"', output: '"cba"' }
+];
+
+const reverseHidden = [
+  { input: '"abcd"', output: '"dcba"' },
+  { input: '"racecar"', output: '"racecar"' },
+  { input: '"z"', output: '"z"' },
+  { input: '"leetcode"', output: '"edocteel"' },
+  { input: '"openai"', output: '"ianepo"' },
+  { input: '"testing"', output: '"gnitset"' },
+  { input: '"abcdef"', output: '"fedcba"' },
+  { input: '"aaa"', output: '"aaa"' },
+  { input: '"12345"', output: '"54321"' },
+  { input: '"Aba"', output: '"abA"' }
+];
+
+const binarySamples = [
+  { input: arrayToSpaceSeparated("[1,2,3,4,5]") + " 4", output: "3" },
+  { input: arrayToSpaceSeparated("[1,3,5,7]") + " 7", output: "3" }
+];
+
+const binaryHidden = [
+  { input: arrayToSpaceSeparated("[1,2,3,4,5]") + " 6", output: "-1" },
+  { input: arrayToSpaceSeparated("[10,20,30]") + " 10", output: "0" },
+  { input: arrayToSpaceSeparated("[10,20,30]") + " 30", output: "2" },
+  { input: arrayToSpaceSeparated("[5,10,15]") + " 15", output: "2" },
+  { input: arrayToSpaceSeparated("[2,4,6,8]") + " 6", output: "2" },
+  { input: arrayToSpaceSeparated("[2,4,6,8]") + " 7", output: "-1" },
+  { input: arrayToSpaceSeparated("[1]") + " 1", output: "0" },
+  { input: arrayToSpaceSeparated("[1]") + " 2", output: "-1" },
+  { input: arrayToSpaceSeparated("[0,5,10]") + " 5", output: "1" },
+  { input: arrayToSpaceSeparated("[0,5,10]") + " 0", output: "0" }
+];
+
+const maxSubSamples = [
+  { input: arrayToSpaceSeparated("[-2,1,-3,4,-1,2,1,-5,4]"), output: "6" },
+  { input: arrayToSpaceSeparated("[1]"), output: "1" }
+];
+
+const maxSubHidden = [
+  { input: arrayToSpaceSeparated("[5,4,-1,7,8]"), output: "23" },
+  { input: arrayToSpaceSeparated("[-1]"), output: "-1" },
+  { input: arrayToSpaceSeparated("[-2,-1]"), output: "-1" },
+  { input: arrayToSpaceSeparated("[1,2,3,4]"), output: "10" },
+  { input: arrayToSpaceSeparated("[-1,-2,-3]"), output: "-1" },
+  { input: arrayToSpaceSeparated("[3,-2,5,-1]"), output: "6" },
+  { input: arrayToSpaceSeparated("[100,-1,2,-3,4]"), output: "102" },
+  { input: arrayToSpaceSeparated("[1,-1,1,-1]"), output: "1" },
+  { input: arrayToSpaceSeparated("[0,0,0,0,0,0,0,0,0,0,0]"), output: "0" },
+  { input: arrayToSpaceSeparated("[-5,4,6,-3,4,-1]"), output: "11" }
+];
+
+// ============================
+// Problems
+// ============================
+
+const problems = [
+  {
+    title: "Two Sum",
+    description: "Find indices of two numbers that add up to the target.",
+    difficulty: "Easy",
+    topics: ["Array", "Hashing"],
+    constraints: ["2 ≤ nums.length ≤ 10^4"],
+    starterCode: `function twoSum(nums, target) {\n  // Write your code here\n}`,
+    samples: twoSumSamples,
+    hidden: twoSumHidden
+  },
+  {
+    title: "Reverse String",
+    description: "Reverse the given string.",
+    difficulty: "Easy",
+    topics: ["String"],
+    constraints: ["1 ≤ length ≤ 10^5"],
+    starterCode: `function reverseString(s) {\n  // Write your code here\n}`,
+    samples: reverseSamples,
+    hidden: reverseHidden
+  },
+  {
+    title: "Binary Search",
+    description: "Find target index using binary search.",
+    difficulty: "Medium",
+    topics: ["Binary Search"],
+    constraints: ["1 ≤ n ≤ 10^5"],
+    starterCode: `function binarySearch(arr, target) {\n  // Write your code here\n}`,
+    samples: binarySamples,
+    hidden: binaryHidden
+  },
+  {
+    title: "Maximum Subarray",
+    description: "Find the subarray with the maximum sum.",
+    difficulty: "Medium",
+    topics: ["Array", "DP"],
+    constraints: ["1 ≤ n ≤ 10^5"],
+    starterCode: `function maxSubArray(nums) {\n  // Write your code here\n}`,
+    samples: maxSubSamples,
+    hidden: maxSubHidden
+  }
+];
+
+// ============================
+// Seeder
+// ============================
+
+async function seedProblems() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/coding-practice');
-    console.log('Connected to MongoDB');
+    await mongoose.connect(process.env.MONGODB_URI);
+    console.log("✅ MongoDB connected");
 
-    await Problem.deleteMany({});
-    console.log('Cleared existing problems');
+    await Problem.deleteMany();
+    console.log("🗑️ Old problems removed");
 
-    await Problem.insertMany(problems);
-    console.log(`Seeded ${problems.length} problems`);
+    const docs = problems.map(p => ({
+      title: p.title,
+      description: p.description,
+      difficulty: p.difficulty,
+      topics: p.topics,
+      starterCode: p.starterCode,
+      constraints: p.constraints,
+      attemptsCount: 0,
+      acceptedCount: 0,
 
+      sampleTestCases: p.samples.map(s => ({
+        input: s.input,
+        output: s.output,
+        explanation: ""
+      })),
+
+      testCases: p.hidden.map(h => ({
+        input: h.input,
+        expectedOutput: h.output,
+        isPublic: false
+      })),
+
+      createdBy: ADMIN_ID
+    }));
+
+    await Problem.insertMany(docs);
+    console.log(`🚀 Seeded ${docs.length} problems successfully`);
     process.exit(0);
-  } catch (error) {
-    console.error('Error seeding:', error);
+  } catch (err) {
+    console.error("❌ Seeding failed:", err);
     process.exit(1);
   }
 }
 
-seed();
+seedProblems();

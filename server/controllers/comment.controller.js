@@ -1,36 +1,46 @@
 import Comment from '../models/Comment.model.js';
+import sanitizeHtml from 'sanitize-html';
 
+// ---------------- GET COMMENTS ----------------
 export const getComments = async (req, res) => {
   try {
     const { problemId } = req.query;
 
-    // Helper function to recursively build comment tree
-    const buildCommentTree = async (parentId = null) => {
-      const comments = await Comment.find({ problemId, parentId })
-        .populate('userId', 'username email')
-        .sort({ createdAt: -1 });
+    if (!problemId) {
+      return res.status(400).json({ message: 'Problem ID is required' });
+    }
 
-      // Recursively get replies for each comment
-      const commentsWithReplies = await Promise.all(
-        comments.map(async (comment) => {
-          const replies = await buildCommentTree(comment._id);
-          return {
-            ...comment.toObject(),
-            replies,
-          };
-        })
-      );
+    // Fetch all comments for the problem in one query
+    const allComments = await Comment.find({ problemId })
+      .populate('userId', 'username email')
+      .sort({ createdAt: -1 });
 
-      return commentsWithReplies;
-    };
+    // Map comments by their _id for quick access
+    const commentMap = {};
+    allComments.forEach((comment) => {
+      commentMap[comment._id] = { ...comment.toObject(), replies: [] };
+    });
 
-    const comments = await buildCommentTree();
-    res.json(comments);
+    // Build the tree
+    const rootComments = [];
+    allComments.forEach((comment) => {
+      if (comment.parentId) {
+        // Append to parent if exists
+        commentMap[comment.parentId]?.replies.push(commentMap[comment._id]);
+      } else {
+        // Top-level comment
+        rootComments.push(commentMap[comment._id]);
+      }
+    });
+
+    res.json(rootComments);
   } catch (error) {
+    console.error('GET COMMENTS ERROR:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
+// ---------------- CREATE COMMENT ----------------
 export const createComment = async (req, res) => {
   try {
     const { problemId, content, parentId } = req.body;
@@ -40,10 +50,13 @@ export const createComment = async (req, res) => {
       return res.status(400).json({ message: 'Problem ID and content are required' });
     }
 
+    // Sanitize content to prevent XSS
+    const sanitizedContent = sanitizeHtml(content.trim());
+
     const comment = new Comment({
       userId,
       problemId,
-      content: content.trim(),
+      content: sanitizedContent,
       parentId: parentId || null,
     });
 
@@ -55,6 +68,7 @@ export const createComment = async (req, res) => {
       message: 'Comment posted successfully',
     });
   } catch (error) {
+    console.error('CREATE COMMENT ERROR:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

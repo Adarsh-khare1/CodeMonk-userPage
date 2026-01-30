@@ -3,7 +3,8 @@ import problemRoutes from '../routes/problem.routes.js';
 import submissionRoutes from '../routes/submission.routes.js';
 import commentRoutes from '../routes/comment.routes.js';
 import userRoutes from '../routes/user.routes.js';
-import chatbotRoutes from '../routes/chatbot.routes.js';
+import dashboardRoutes from '../routes/dashboard.routes.js';
+
 
 export const setupRoutes = (app) => {
   try {
@@ -33,10 +34,15 @@ export const setupRoutes = (app) => {
       next();
     }, userRoutes);
 
-    app.use('/api/chatbot', (req, res, next) => {
-      console.log('🤖 Chatbot route accessed:', req.method, req.url);
+    app.use('/api/dashboard', (req, res, next) => {
+      console.log('📊 Dashboard route accessed:', req.method, req.url);
       next();
-    }, chatbotRoutes);
+    }, dashboardRoutes);
+
+    // app.use('/api/chatbot', (req, res, next) => {
+    //   console.log('🤖 Chatbot route accessed:', req.method, req.url);
+    //   next();
+    // }, chatbotRoutes);
 
     // Health check with detailed logging
     app.get('/api/health', (req, res) => {

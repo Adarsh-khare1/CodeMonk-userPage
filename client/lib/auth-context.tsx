@@ -1,215 +1,147 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { User } from "@/types/user";
 
-interface User {
-  id: string;
-  username: string;
-  email: string;
-}
+// ---------------- CONTEXT TYPES ----------------
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
-  loading: boolean;
 }
+
+// ---------------- CONTEXT ----------------
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// ---------------- PROVIDER ----------------
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
+  // ---------------- HYDRATE FROM LOCAL STORAGE ----------------
   useEffect(() => {
     try {
-      console.log('🔐 Initializing auth context...');
-      const storedToken = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
+      const storedToken = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
 
       if (storedToken && storedUser) {
-        console.log('✅ Found stored auth data');
         setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-      } else {
-        console.log('ℹ️ No stored auth data found');
+        setUser(JSON.parse(storedUser) as User);
       }
-    } catch (error) {
-      console.error('❌ Error initializing auth context:', error);
-      // Clear potentially corrupted data
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+    } catch (err) {
+      console.error("Auth hydration failed:", err);
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // ---------------- LOGIN ----------------
   const login = async (email: string, password: string) => {
-    const startTime = Date.now();
+    setLoading(true);
 
     try {
-      console.log('🔑 Login attempt:', {
-        email: email.replace(/(.{2}).*(@.*)/, '$1***$2'), // Mask email
-        timestamp: new Date().toISOString()
-      });
-
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ Login failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-          duration: `${Date.now() - startTime}ms`
-        });
-        throw new Error(errorData.message || 'Login failed');
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Login failed");
       }
 
-      const data = await response.json();
-      console.log('✅ Login successful:', {
-        userId: data.user.id,
+      // Must contain _id, username, email
+      const user: User = {
+        _id: data.user._id,
         username: data.user.username,
-        duration: `${Date.now() - startTime}ms`
-      });
+        email: data.user.email,
+      };
 
+      setUser(user);
       setToken(data.token);
-      setUser(data.user);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
 
-      // Get return URL or default to dashboard
-      const returnUrl = localStorage.getItem('returnUrl') || '/dashboard';
-      localStorage.removeItem('returnUrl');
-      if (returnUrl) {
-        console.log('🔄 Redirecting to:', returnUrl);
-        router.push(returnUrl);
-      }
-    } catch (error: any) {
-      console.error('💥 Login error:', {
-        message: error.message,
-        stack: error.stack,
-        duration: `${Date.now() - startTime}ms`,
-        timestamp: new Date().toISOString()
-      });
-      throw error;
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token", data.token);
+    } catch (err) {
+      console.error("Login error:", err);
+      throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ---------------- SIGNUP ----------------
   const signup = async (username: string, email: string, password: string) => {
-    const startTime = Date.now();
+    setLoading(true);
 
     try {
-      console.log('📝 Signup attempt:', {
-        username,
-        email: email.replace(/(.{2}).*(@.*)/, '$1***$2'), // Mask email
-        timestamp: new Date().toISOString()
-      });
-
-      const response = await fetch('http://localhost:5000/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, password }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ Signup failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-          duration: `${Date.now() - startTime}ms`
-        });
-        throw new Error(errorData.message || 'Signup failed');
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Signup failed");
       }
 
-      const data = await response.json();
-      console.log('✅ Signup successful:', {
-        userId: data.user.id,
+      const user: User = {
+        _id: data.user._id,
         username: data.user.username,
-        duration: `${Date.now() - startTime}ms`
-      });
+        email: data.user.email,
+      };
 
+      setUser(user);
       setToken(data.token);
-      setUser(data.user);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
 
-      // Get return URL or default to dashboard
-      const returnUrl = localStorage.getItem('returnUrl') || '/dashboard';
-      localStorage.removeItem('returnUrl');
-      if (returnUrl) {
-        console.log('🔄 Redirecting to:', returnUrl);
-        router.push(returnUrl);
-      }
-    } catch (error: any) {
-      console.error('💥 Signup error:', {
-        message: error.message,
-        stack: error.stack,
-        duration: `${Date.now() - startTime}ms`,
-        timestamp: new Date().toISOString()
-      });
-      throw error;
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token", data.token);
+    } catch (err) {
+      console.error("Signup error:", err);
+      throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ---------------- LOGOUT ----------------
   const logout = () => {
-    try {
-      console.log('🚪 Logout initiated:', {
-        userId: user?.id,
-        username: user?.username,
-        timestamp: new Date().toISOString()
-      });
-
-      setToken(null);
-      setUser(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-
-      // Clear saved code on logout
-      const keysToRemove: string[] = [];
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('code_')) {
-          keysToRemove.push(key);
-        }
-      });
-
-      keysToRemove.forEach(key => {
-        localStorage.removeItem(key);
-      });
-
-      console.log('✅ Logout completed, cleared', keysToRemove.length, 'saved code items');
-      router.push('/');
-    } catch (error) {
-      console.error('❌ Logout error:', error);
-      // Force logout even if error occurs
-      setToken(null);
-      setUser(null);
-      router.push('/');
-    }
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    router.push("/");
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, signup, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, loading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
+// ---------------- HOOK ----------------
+
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    console.error('❌ useAuth called outside of AuthProvider');
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    throw new Error("useAuth must be used inside AuthProvider");
   }
   return context;
 }

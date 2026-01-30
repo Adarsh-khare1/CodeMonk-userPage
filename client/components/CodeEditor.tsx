@@ -1,5 +1,8 @@
 import { RotateCcw, Save } from 'lucide-react';
 
+import { User } from '@/types/user';
+
+
 interface CodeEditorProps {
   code: string;
   onCodeChange: (code: string) => void;
@@ -7,7 +10,7 @@ interface CodeEditorProps {
   onReset: () => void;
   submitting: boolean;
   codeSaved: boolean;
-  user: any;
+  user: User | null;
   language: string;
   onLanguageChange: (language: string) => void;
 }
@@ -33,12 +36,13 @@ export default function CodeEditor({
 }: CodeEditorProps) {
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-      <div className="bg-gray-750 px-4 py-2 border-b border-gray-700 flex items-center justify-between">
+      <div className="bg-gray-800 px-4 py-2 border-b border-gray-700 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium">Code Editor</span>
           <select
             value={language}
             onChange={(e) => onLanguageChange(e.target.value)}
+            disabled={submitting}
             className="bg-gray-700 text-white text-sm px-2 py-1 rounded border border-gray-600 focus:outline-none focus:border-blue-500"
           >
             {SUPPORTED_LANGUAGES.map((lang) => (
@@ -59,6 +63,7 @@ export default function CodeEditor({
             onClick={onReset}
             className="text-gray-400 hover:text-white p-1.5 rounded transition"
             title="Reset code"
+            aria-label="Reset code"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
@@ -66,6 +71,7 @@ export default function CodeEditor({
             onClick={onSubmit}
             disabled={submitting || !code.trim()}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium disabled:opacity-50 transition"
+            aria-label="Submit code"
           >
             {submitting ? 'Running...' : user ? 'Submit' : 'Login to Submit'}
           </button>

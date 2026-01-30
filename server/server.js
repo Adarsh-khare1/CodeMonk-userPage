@@ -9,12 +9,15 @@ const PORT = process.env.PORT || 5000;
 
 console.log('🚀 Starting server initialization...');
 
+
+
 // Setup middleware with error handling
 try {
   setupMiddleware(app);
   console.log('✅ Middleware setup completed');
 } catch (error) {
   console.error('❌ Error setting up middleware:', error);
+
   process.exit(1);
 }
 
@@ -26,6 +29,7 @@ try {
   console.error('❌ Error setting up routes:', error);
   process.exit(1);
 }
+
 
 // Global error handler
 app.use((err, req, res, next) => {

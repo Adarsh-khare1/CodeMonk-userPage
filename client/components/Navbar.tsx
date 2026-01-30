@@ -1,141 +1,109 @@
 'use client';
 
-import Link from 'next/link';
-import { useAuth } from '@/lib/auth-context';
-import { usePathname, useRouter } from 'next/navigation';
-import { Code2, LogOut, User, ChevronDown } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
-import Avatar from './Avatar';
-import LoginModal from './LoginModal';
+import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
+import { usePathname } from "next/navigation";
+import { ChevronDown, LogOut, User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import Avatar from "./Avatar";
+import LoginModal from "./LoginModal";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const pathname = usePathname();
-  const router = useRouter();
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
-  const [loginModalMode, setLoginModalMode] = useState<'login' | 'signup'>('login');
+  const [loginModalMode, setLoginModalMode] = useState<"login" | "signup">("login");
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
       }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const handleLogout = () => {
-    logout();
-    setDropdownOpen(false);
-  };
-
-  const isActive = (path: string) => {
-    return pathname === path || pathname.startsWith(path + '/');
-  };
 
   return (
     <>
-      <nav className="sticky top-0 z-40 bg-gray-800/95 backdrop-blur-sm border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <Link href="/problems" className="flex items-center space-x-2">
-                <Code2 className="h-6 w-6 text-blue-400" />
-                <span className="text-xl font-bold">CodePractice</span>
+      <div className="w-full mx-auto px-8 relative z-30 bg-black/30 backdrop-blur-sm">
+        <header className="flex justify-between items-center py-4 px-20">
+          <Link href="/problems">
+            <h1 className="text-[2.8rem] font-light text-white">
+              Code<span className="text-yellow-500">Monk</span>
+            </h1>
+          </Link>
+
+          <nav className="flex items-center gap-12">
+            <Link
+              href="/problems"
+              className={`text-base tracking-[0.1rem] transition-colors duration-200 ease-in-out hover:text-yellow-500 ${
+                pathname.startsWith("/problems") ? "text-yellow-500" : "text-white"
+              }`}
+            >
+              Problems
+            </Link>
+
+            {!loading && user && (
+              <Link
+                href="/dashboard"
+                className={`text-base tracking-[0.1rem] transition-colors duration-200 ease-in-out hover:text-yellow-500 ${
+                  pathname.startsWith("/dashboard") ? "text-yellow-500" : "text-white"
+                }`}
+              >
+                Dashboard
               </Link>
-              <div className="ml-10 flex items-center space-x-1">
-                <Link
-                  href="/problems"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                    isActive('/problems')
-                      ? 'bg-gray-700 text-white'
-                      : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
-                  }`}
-                >
-                  Problems
-                </Link>
-                {user && (
+            )}
+          </nav>
+
+          {!loading && user ? (
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center gap-3 bg-[#a7a7a7] text-black py-[0.4rem] px-6 rounded-[50px] text-base font-medium transition hover:bg-yellow-500"
+              >
+                <Avatar username={user.username} size="sm" />
+                <span>{user.username}</span>
+                <ChevronDown className="w-4 h-4" />
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-3 w-48 bg-black border border-gray-700 rounded-xl overflow-hidden">
                   <Link
                     href="/dashboard"
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                      isActive('/dashboard')
-                        ? 'bg-gray-700 text-white'
-                        : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
-                    }`}
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2 px-4 py-3 text-sm text-white hover:bg-white/10"
                   >
+                    <User className="w-4 h-4" />
                     Dashboard
                   </Link>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              {user ? (
-                <div className="relative" ref={dropdownRef}>
                   <button
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-700 transition"
+                    onClick={logout}
+                    className="flex w-full items-center gap-2 px-4 py-3 text-sm text-white hover:bg-white/10"
                   >
-                    <Avatar username={user.username} size="sm" />
-                    <span className="text-sm font-medium hidden sm:block">
-                      {user.username}
-                    </span>
-                    <ChevronDown className="h-4 w-4 text-gray-400" />
-                  </button>
-
-                  {dropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg py-1">
-                      <div className="px-4 py-2 border-b border-gray-700">
-                        <p className="text-sm font-medium text-white">{user.username}</p>
-                        <p className="text-xs text-gray-400 truncate">{user.email}</p>
-                      </div>
-                      <Link
-                        href="/dashboard"
-                        onClick={() => setDropdownOpen(false)}
-                        className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
-                      >
-                        <User className="h-4 w-4 inline mr-2" />
-                        Dashboard
-                      </Link>
-                      <button
-                        onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
-                      >
-                        <LogOut className="h-4 w-4 inline mr-2" />
-                        Logout
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => {
-                      setLoginModalMode('login');
-                      setLoginModalOpen(true);
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition"
-                  >
-                    Login
-                  </button>
-                  <button
-                    onClick={() => {
-                      setLoginModalMode('signup');
-                      setLoginModalOpen(true);
-                    }}
-                    className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-                  >
-                    Sign Up
+                    <LogOut className="w-4 h-4" />
+                    Logout
                   </button>
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      </nav>
+          ) : (
+            <button
+              onClick={() => {
+                setLoginModalMode("login");
+                setLoginModalOpen(true);
+              }}
+              className="bg-[#a7a7a7] text-black py-[0.6rem] px-7 rounded-[50px] text-base font-medium transition-colors duration-200 ease-in-out cursor-pointer hover:bg-yellow-500 z-50"
+            >
+              Sign In
+            </button>
+          )}
+        </header>
+      </div>
 
       <LoginModal
         isOpen={loginModalOpen}

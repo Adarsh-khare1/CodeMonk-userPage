@@ -20,7 +20,6 @@ export default function LoginModal({ isOpen, onClose, onSuccess, defaultMode = '
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Reset form when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setIsLogin(defaultMode === 'login');
@@ -70,21 +69,14 @@ export default function LoginModal({ isOpen, onClose, onSuccess, defaultMode = '
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-lg shadow-2xl max-w-md w-full border border-gray-700 relative">
-        <button
-          onClick={handleClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition"
-        >
+        <button onClick={handleClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition">
           <X className="h-5 w-5" />
         </button>
 
         <div className="p-6">
-          <h2 className="text-2xl font-bold mb-2">
-            {isLogin ? 'Login' : 'Sign Up'}
-          </h2>
+          <h2 className="text-2xl font-bold mb-2">{isLogin ? 'Login' : 'Sign Up'}</h2>
           <p className="text-gray-400 text-sm mb-6">
-            {isLogin
-              ? 'Login to submit solutions and comment'
-              : 'Create an account to get started'}
+            {isLogin ? 'Login to submit solutions and comment' : 'Create an account to get started'}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -102,7 +94,6 @@ export default function LoginModal({ isOpen, onClose, onSuccess, defaultMode = '
                   minLength={3}
                   maxLength={30}
                 />
-                <p className="text-xs text-gray-500 mt-1">Only letters, numbers, and underscores</p>
               </div>
             )}
 
@@ -128,11 +119,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess, defaultMode = '
               />
             </div>
 
-            {error && (
-              <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-2 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
+            {error && <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-2 rounded-lg text-sm">{error}</div>}
 
             <button
               type="submit"
@@ -144,13 +131,8 @@ export default function LoginModal({ isOpen, onClose, onSuccess, defaultMode = '
           </form>
 
           <div className="mt-4 text-center">
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-blue-400 hover:text-blue-300 text-sm"
-            >
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : 'Already have an account? Login'}
+            <button onClick={() => setIsLogin(!isLogin)} className="text-blue-400 hover:text-blue-300 text-sm">
+              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Login'}
             </button>
           </div>
         </div>

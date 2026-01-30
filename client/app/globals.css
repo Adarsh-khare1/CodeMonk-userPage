@@ -19,11 +19,15 @@
 * {
   border-color: hsl(var(--border));
 }
-
+html,
 body {
   color: hsl(var(--foreground));
   background: hsl(var(--background));
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
+
 
 @layer utilities {
   .text-balance {

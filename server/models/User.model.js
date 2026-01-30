@@ -21,6 +21,7 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
+    select: false,   // 🔐 IMPORTANT
   },
   solvedProblems: [{
     problemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Problem' },
@@ -59,10 +60,17 @@ const userSchema = new mongoose.Schema({
   timestamps: true,
 });
 
+userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ username: 1 }, { unique: true });
+
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
+  try {
+    if (!this.isModified('password')) return next();
+    this.password = await bcrypt.hash(this.password, 10);
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
 userSchema.methods.comparePassword = async function (candidatePassword) {
