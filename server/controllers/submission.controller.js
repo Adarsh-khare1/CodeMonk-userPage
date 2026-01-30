@@ -76,206 +76,174 @@ export const runCode = async (req, res) => {
 ========================================= */
 export const submitSolution = async (req, res) => {
   try {
-   const { code, language, problemId } = req.body;
+    const { code, language, problemId } = req.body;
+    const userId = req.user._id;
 
-if (!code || !language || !problemId) {
-  return res.status(400).json({ error: "Missing required fields" });
-}
-
-// Fetch problem from DB
-const problem = await Problem.findById(problemId);
-if (!problem) {
-  return res.status(404).json({ error: "Problem not found" });
-}
-
-// Only hidden test cases
-const hiddenTests = problem.testCases
-  .filter(tc => !tc.isPublic)
-  .map(tc => ({
-    input: tc.input,
-      expectedOutput: tc.expectedOutput
-  }));
-
-if (!hiddenTests.length) {
-  return res.status(400).json({ error: "No hidden test cases found" });
-}
-
-
-    // Judge hidden test cases
-    // 1️⃣ Run sample tests first
-const sampleTests = problem.sampleTestCases.map(tc => ({
-  input: tc.input,
-  expectedOutput: tc.output
-}));
-
-const sampleResult = await runSampleTests(code, sampleTests, language);
-
-// ❌ If sample tests failed → return immediately
-if (sampleResult.status !== "Accepted") {
-  return res.json({
-    submission: {},
-    testResults: {
-      passed: sampleResult.results.filter(r => r.passed).length,
-      total: sampleResult.results.length,
-      status: "Wrong Answer",
-      results: sampleResult.results.map(r => ({
-        testCase: r.testCase,
-        input: r.input,
-        expectedOutput: r.expected,
-        actualOutput: r.actual,
-        passed: r.passed,
-        error: r.error
-      }))
+    if (!code || !language || !problemId) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
-  });
-}
-const hiddenResult = await judgeSubmission(code, hiddenTests, language);
-// ❌ If any hidden test failed → send ONLY first failed case
-if (hiddenResult.status !== "Accepted") {
-  const failed = hiddenResult.results.find(r => !r.passed);
 
-  return res.json({
-    submission: {},
-    testResults: {
-      passed: sampleTests.length + hiddenResult.passed,
-      total: sampleTests.length + hiddenTests.length,
-      status: "Wrong Answer",
-      results: [
-        {
-          testCase: "Hidden",
-          input: failed.input,
-          expectedOutput: failed.expected,
-          actualOutput: failed.actual,
-          passed: false,
-          error: failed.error
-        }
-      ]
+    const problem = await Problem.findById(problemId);
+    if (!problem) return res.status(404).json({ error: "Problem not found" });
+
+    const sampleTests = problem.sampleTestCases.map(tc => ({
+      input: tc.input,
+      expectedOutput: tc.output
+    }));
+
+    const hiddenTests = problem.testCases
+      .filter(tc => !tc.isPublic)
+      .map(tc => ({
+        input: tc.input,
+        expectedOutput: tc.expectedOutput
+      }));
+
+    // ================================
+    // RUN SAMPLE
+    // ================================
+    const sampleResult = await runSampleTests(code, sampleTests, language);
+
+    let hiddenResult = null;
+    let finalResult = null;   // 👈 what UI + DB will use
+
+    if (sampleResult.status !== "Accepted") {
+      finalResult = {
+        status: "Wrong Answer",
+        results: sampleResult.results,
+        passed: sampleResult.results.filter(r => r.passed).length,
+        total: sampleResult.results.length
+      };
+    } else {
+      // ================================
+      // RUN HIDDEN
+      // ================================
+      hiddenResult = await judgeSubmission(code, hiddenTests, language);
+
+      if (hiddenResult.status !== "Accepted") {
+        const failed = hiddenResult.results.find(r => !r.passed);
+
+        finalResult = {
+          status: "Wrong Answer",
+          results: [
+            {
+              testCase: -1, // 👈 store as number for MongoDB
+              label: "Hidden", // 👈 keep for UI
+              input: failed.input,
+              expected: failed.expected,
+              actual: failed.actual,
+              passed: false,
+              error: failed.error
+            }
+          ],
+          passed: sampleTests.length + hiddenResult.passed,
+          total: sampleTests.length + hiddenTests.length
+        };
+      } else {
+        finalResult = {
+          status: "Accepted",
+          results: [],
+          passed: sampleTests.length + hiddenTests.length,
+          total: sampleTests.length + hiddenTests.length
+        };
+      }
     }
-  });
-}
-return res.json({
-  submission: {},
-  testResults: {
-    passed: sampleTests.length + hiddenTests.length,
-    total: sampleTests.length + hiddenTests.length,
-    status: "Accepted",
-    results: []   // No test list
-  }
-});
 
-
-
-
-    // Save submission in DB
+    // ================================
+    // SAVE SUBMISSION ✅
+    // ================================
     const submission = await Submission.create({
-      userId: req.user._id,
+      userId,
       problemId,
       code,
       language,
-      status: result.status,
-      executionTime: result.executionTime,
-      memoryUsed: result.memoryUsed,
-     results: result.results.map((r, index) => ({
-  testCase: r.testCase ?? index + 1,   // GUARANTEED
+      status: finalResult.status,
+      results: finalResult.results.map((r, i) => ({
+        testCase: typeof r.testCase === "number" ? r.testCase : i + 1,
+
+        passed: r.passed,
+        input: r.input || "",
+        expectedOutput: r.expected || "",
+        actualOutput: r.actual || "",
+        error: r.error || null
+      }))
+    });
+
+    await SubmissionHistory.create({
+      userId,
+      problemId,
+      code,
+      language,
+      status: finalResult.status,
+      passed: finalResult.passed,
+      total: finalResult.total
+    });
+
+    // ================================
+    // USER + STREAK + HEATMAP
+    // ================================
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+    const user = await User.findById(userId);
+
+    user.submissions.push({ submissionId: submission._id, date: today });
+
+    const day = user.activityByDate.find(d => d.date === todayStr);
+    if (day) day.count += 1;
+    else user.activityByDate.push({ date: todayStr, count: 1 });
+
+    if (finalResult.status === "Accepted") {
+      const alreadySolved = user.solvedProblems.some(
+        p => p.problemId.toString() === problemId.toString()
+      );
+
+      if (!alreadySolved) {
+        user.solvedProblems.push({ problemId, solvedAt: today });
+      }
+
+      const last = user.streak.lastSolvedDate
+        ? new Date(user.streak.lastSolvedDate)
+        : null;
+
+      if (!last) user.streak.current = 1;
+      else {
+        const diff = Math.floor((today - last) / 86400000);
+        if (diff === 1) user.streak.current++;
+        else if (diff > 1) user.streak.current = 1;
+      }
+
+      user.streak.lastSolvedDate = today;
+      user.streak.longest = Math.max(user.streak.longest, user.streak.current);
+    }
+
+    await user.save();
+
+    // ================================
+    // SEND UI RESPONSE (unchanged)
+    // ================================
+    return res.json({
+      submission: {},
+      testResults: {
+        passed: finalResult.passed,
+        total: finalResult.total,
+        status: finalResult.status,
+        results: finalResult.results.map(r => ({
+  testCase: r.testCase === -1 ? "Hidden" : r.testCase,
+  input: r.input,
+  expectedOutput: r.expected,
+  actualOutput: r.actual,
   passed: r.passed,
-  input: r.input || "",
-  expectedOutput: r.expected || "",
-  actualOutput:  r.actual || "",
-  error: r.error || null,
+  error: r.error
 }))
 
+      }
     });
 
-    // Save to history
-    await SubmissionHistory.create({
-      userId: req.user._id,
-      problemId,
-      code,
-      language,
-      status: result.status,
-      passed: result.passed,
-      total: result.total,
-    });
-
-
-
-    // Transform for frontend
-    const formattedResult = {
-      submission: {
-        stdout: "",
-        stderr: "",
-        compile_output: "",
-      },
-      testResults: {
-        passed: result.passed,
-        total: result.total,
-        status: result.status,
-        results: result.results.map(r => ({
-          testCase: r.testCase,
-          input: r.input || "",
-          expectedOutput: r.expected || "",
-          actualOutput: r.actual || "",
-          passed: r.passed,
-          error: r.error,
-        })),
-      },
-    };
-    const today = new Date();
-const todayStr = today.toISOString().split("T")[0]; // "2026-01-30"
-
-const user = await User.findById(req.user._id);
-
-// 1️⃣ Push submission to user.submissions
-user.submissions.push({
-  submissionId: submission._id,
-  date: today,
-});
-
-// 2️⃣ Update heatmap
-const dayEntry = user.activityByDate.find(d => d.date === todayStr);
-if (dayEntry) {
-  dayEntry.count += 1;
-} else {
-  user.activityByDate.push({ date: todayStr, count: 1 });
-}
-
-// 3️⃣ If Accepted → solved + streak
-if (result.status === "Accepted") {
-  const alreadySolved = user.solvedProblems.some(
-    p => p.problemId?.toString() === problemId.toString()
-  );
-
-  if (!alreadySolved) {
-    user.solvedProblems.push({ problemId, solvedAt: today });
-  }
-
-  // 🔥 STREAK LOGIC
-  const last = user.streak.lastSolvedDate
-    ? new Date(user.streak.lastSolvedDate)
-    : null;
-
-  if (!last) {
-    user.streak.current = 1;
-  } else {
-    const diff = Math.floor((today - last) / (1000 * 60 * 60 * 24));
-
-    if (diff === 1) user.streak.current += 1;
-    else if (diff > 1) user.streak.current = 1;
-  }
-
-  user.streak.lastSolvedDate = today;
-  user.streak.longest = Math.max(user.streak.longest, user.streak.current);
-}
-
-await user.save();
-
-
-    res.json(formattedResult);
   } catch (err) {
     console.error("submitSolution error:", err);
     res.status(500).json({ error: err.message });
   }
 };
+
 
 
 /* =========================================
