@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import ExternalProfileModal from '@/components/ExternalProfileModal';
@@ -83,7 +84,15 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-900">
       <Navbar />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <Link
+            href="/dashboard/submissions"
+            className="text-base text-gray-300 hover:text-yellow-500 transition-colors"
+          >
+            Submissions
+          </Link>
+        </div>
 
         {/* Streak Stats */}
         <StreakCards current={analytics.streak.current} longest={analytics.streak.longest} />

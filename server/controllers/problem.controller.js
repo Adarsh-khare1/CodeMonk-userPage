@@ -8,7 +8,8 @@ export const getProblems = async (req, res) => {
     }
 
     const { difficulty, topic, search } = req.query;
-    const filter = {};
+    const filter = { isDeleted: { $ne: true } };
+
 
     if (difficulty) filter.difficulty = difficulty;
 
@@ -33,17 +34,30 @@ export const getProblems = async (req, res) => {
 export const getProblemById = async (req, res) => {
   try {
     if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({ message: 'Database unavailable' });
+      return res.status(503).json({ message: "Database unavailable" });
     }
 
-    const problem = await Problem.findById(req.params.id);
+    const identifier = req.params.id;
+
+    const query = {
+      isDeleted: { $ne: true },
+      $or: [
+        { slug: identifier },
+        ...(mongoose.Types.ObjectId.isValid(identifier)
+          ? [{ _id: identifier }]
+          : [])
+      ]
+    };
+
+    const problem = await Problem.findOne(query);
+
     if (!problem) {
-      return res.status(404).json({ message: 'Problem not found' });
+      return res.status(404).json({ message: "Problem not found" });
     }
 
     res.json(problem);
   } catch (error) {
-    console.error('GET PROBLEM ERROR:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("GET PROBLEM ERROR:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };

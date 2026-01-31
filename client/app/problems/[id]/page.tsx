@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
 import { Play } from 'lucide-react';
@@ -61,7 +61,9 @@ interface SubmissionResultType {
 export default function ProblemDetail() {
   const { user, loading: authLoading } = useAuth();
   const params = useParams();
+  const searchParams = useSearchParams();
   const problemId = params.id as string;
+  const submissionIdFromUrl = searchParams.get('submissionId');
 
   const [problem, setProblem] = useState<Problem | null>(null);
   const [code, setCode] = useState<string>('');
@@ -86,9 +88,22 @@ export default function ProblemDetail() {
   }, [problemId, language]);
 
   useEffect(() => {
+    if (submissionIdFromUrl && user) {
+      api
+        .get(`/submissions/by-id/${submissionIdFromUrl}`)
+        .then((res) => {
+          if (res.data?.code != null) setCode(res.data.code);
+          if (res.data?.language) setLanguage(res.data.language);
+        })
+        .catch(() => {});
+    }
+  }, [submissionIdFromUrl, user]);
+
+  useEffect(() => {
+  if (submissionIdFromUrl) return;
   const fresh = getStarterCode(language);
   setCode(fresh);
-}, [language]);
+}, [language, submissionIdFromUrl]);
 
 
   const fetchProblem = async () => {
@@ -96,12 +111,13 @@ export default function ProblemDetail() {
       const res = await api.get(`/problems/${problemId}`);
       setProblem(res.data);
 
+      if (submissionIdFromUrl) return;
       const savedCode = localStorage.getItem(codeStorageKey);
       if (savedCode) {
-  setCode(savedCode);
-} else {
-  setCode(getStarterCode(language) || res.data.starterCode);
-}
+        setCode(savedCode);
+      } else {
+        setCode(getStarterCode(language) || res.data.starterCode);
+      }
 
     } catch (err) {
       console.error('Failed to fetch problem:', err);

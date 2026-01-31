@@ -169,3 +169,62 @@ export const getDashboard = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+
+
+export const getSolvedSubmissions = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // 1️⃣ Find all accepted submissions grouped by problem
+    const solved = await SubmissionHistory.aggregate([
+      { $match: { userId, status: "Accepted" } },
+
+      // Sort so latest accepted comes first
+      { $sort: { createdAt: -1 } },
+
+      // Keep only latest per problem
+      {
+        $group: {
+          _id: "$problemId",
+          lastAcceptedAt: { $first: "$createdAt" },
+          language: { $first: "$language" }
+        }
+      }
+    ]);
+
+    const problemIds = solved.map(s => s._id);
+
+    // 2️⃣ Load problem titles + slug
+   const problems = await Problem.find({
+  _id: { $in: problemIds },
+  isDeleted: { $ne: true }
+})
+.select("_id title slug");
+
+
+    // 3️⃣ Merge problem info
+   const result = solved
+  .map(s => {
+    const p = problems.find(pr => pr._id.toString() === s._id.toString());
+    if (!p) return null;   // 👈 hide deleted problems
+    return {
+      problemId: s._id,
+      title: p.title,
+      slug: p.slug,
+      language: s.language,
+      lastAcceptedAt: s.lastAcceptedAt
+    };
+  })
+  .filter(Boolean);   // 👈 removes nulls
+
+
+    // Sort by latest solved
+    result.sort((a, b) => new Date(b.lastAcceptedAt) - new Date(a.lastAcceptedAt));
+
+    res.json(result);
+  } catch (err) {
+    console.error("getSolvedSubmissions", err);
+    res.status(500).json({ error: err.message });
+  }
+};

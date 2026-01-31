@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { runSampleTests, judgeSubmission } from "../services/judge.service.js";
 import Submission from "../models/Submission.model.js";
 import SubmissionHistory from "../models/SubmissionHistory.model.js";
@@ -267,16 +268,87 @@ export const getUserSubmissions = async (req, res) => {
 };
 
 /* =========================================
+   Get my submissions (for Dashboard Submissions page)
+========================================= */
+export const getMySubmissions = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const submissions = await Submission.find({ userId })
+      .populate("problemId", "title")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const list = submissions.map((s) => ({
+      _id: s._id,
+      problemId: s.problemId?._id ?? s.problemId,
+      problemTitle: s.problemId?.title ?? "",
+      language: s.language,
+      status: s.status,
+      createdAt: s.createdAt,
+      code: s.code,
+    }));
+
+    res.json(list);
+  } catch (err) {
+    console.error("getMySubmissions error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/* =========================================
+   Get one submission by id (for loading code on problem page)
+========================================= */
+export const getSubmissionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const submission = await Submission.findOne({ _id: id, userId }).lean();
+    if (!submission) {
+      return res.status(404).json({ error: "Submission not found" });
+    }
+
+    res.json({
+      _id: submission._id,
+      problemId: submission.problemId,
+      language: submission.language,
+      status: submission.status,
+      createdAt: submission.createdAt,
+      code: submission.code,
+    });
+  } catch (err) {
+    console.error("getSubmissionById error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/* =========================================
    Get submission history for a problem
 ========================================= */
 export const getProblemSubmissions = async (req, res) => {
   try {
-    const { problemId } = req.params;
+    const identifier = req.params.problemId;
     const userId = req.user._id;
 
+    // 1️⃣ Resolve slug → ObjectId
+    const problem = await Problem.findOne({
+      isDeleted: { $ne: true },
+      $or: [
+        { slug: identifier },
+        ...(mongoose.Types.ObjectId.isValid(identifier)
+          ? [{ _id: identifier }]
+          : [])
+      ]
+    }).select("_id");
+
+    if (!problem) {
+      return res.status(404).json({ message: "Problem not found" });
+    }
+
+    // 2️⃣ Use real ObjectId
     const submissions = await SubmissionHistory.find({
       userId,
-      problemId,
+      problemId: problem._id
     })
       .sort({ createdAt: -1 })
       .select("code language status passed total createdAt")
@@ -285,6 +357,6 @@ export const getProblemSubmissions = async (req, res) => {
     res.json(submissions);
   } catch (err) {
     console.error("getProblemSubmissions error:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: "Server error" });
   }
 };
