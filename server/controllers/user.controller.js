@@ -52,7 +52,11 @@ export const getAnalytics = async (req, res) => {
     });
 
     res.json({
-      streak: user.streak || { current: 0, longest: 0 },
+      streak: {
+  current: user.streak?.current || 0,
+  longest: user.streak?.longest || 0,
+},
+
       activityByDate: user.activityByDate || [],
       topicDistribution: topicCount,
       totalSolved: user.solvedProblems.length,

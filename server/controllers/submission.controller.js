@@ -206,7 +206,11 @@ export const submitSolution = async (req, res) => {
 
       if (!last) user.streak.current = 1;
       else {
-        const diff = Math.floor((today - last) / 86400000);
+        const lastDate = new Date(last.toDateString());
+const todayDate = new Date(today.toDateString());
+
+const diff = (todayDate - lastDate) / 86400000;
+
         if (diff === 1) user.streak.current++;
         else if (diff > 1) user.streak.current = 1;
       }
