@@ -29,14 +29,10 @@ export default function CommentsSection({
 }: CommentsSectionProps) {
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState('');
 
   const fetchComments = async () => {
     try {
-      const response = await api.get('/comments', {
-        params: { problemId },
-      });
+      const response = await api.get('/comments', { params: { problemId } });
       onCommentsUpdate(response.data);
     } catch (error) {
       console.error('Error fetching comments:', error);
@@ -45,7 +41,6 @@ export default function CommentsSection({
 
   const handleCommentSubmit = async () => {
     if (!newComment.trim()) return;
-
     if (!user) {
       onLoginRequired('comment');
       return;
@@ -53,57 +48,64 @@ export default function CommentsSection({
 
     setSubmittingComment(true);
     try {
-      await api.post('/comments', {
-        problemId,
-        content: newComment,
-      });
-
+      await api.post('/comments', { problemId, content: newComment });
       setNewComment('');
       await fetchComments();
     } catch (error: any) {
-      if (error.response?.status === 401) {
-        onLoginRequired('comment');
-      } else {
-        alert(error.response?.data?.message || 'Failed to post comment');
-      }
+      if (error.response?.status === 401) onLoginRequired('comment');
+      else alert(error.response?.data?.message || 'Failed to post comment');
     } finally {
       setSubmittingComment(false);
     }
   };
 
-  const handleReplySubmit = async (parentId: string) => {
-    if (!replyText.trim()) return;
-
-    if (!user) {
-      onLoginRequired('comment');
-      return;
-    }
-
-    try {
-      await api.post('/comments', {
-        problemId,
-        content: replyText,
-        parentId,
-      });
-
-      setReplyText('');
-      setReplyingTo(null);
-      await fetchComments();
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        onLoginRequired('comment');
-      } else {
-        alert(error.response?.data?.message || 'Failed to post reply');
-      }
-    }
-  };
-
-  const CommentItem = ({ comment, isReply = false, depth = 0 }: { comment: Comment; isReply?: boolean; depth?: number }) => {
-    const maxDepth = 5; // Prevent infinite nesting beyond reasonable levels
+  // Recursive CommentItem
+  const CommentItem = ({
+    comment,
+    depth = 0,
+  }: {
+    comment: Comment;
+    depth?: number;
+  }) => {
+    const maxDepth = 5;
     const canReply = depth < maxDepth;
 
+    // ✅ Move reply state into the CommentItem
+    const [showReplyBox, setShowReplyBox] = useState(false);
+    const [replyText, setReplyText] = useState('');
+    const [submittingReply, setSubmittingReply] = useState(false);
+
+    const handleReplySubmit = async () => {
+      if (!replyText.trim()) return;
+      if (!user) {
+        onLoginRequired('comment');
+        return;
+      }
+
+      setSubmittingReply(true);
+      try {
+        await api.post('/comments', {
+          problemId,
+          content: replyText,
+          parentId: comment._id,
+        });
+        setReplyText('');
+        setShowReplyBox(false);
+        await fetchComments();
+      } catch (error: any) {
+        if (error.response?.status === 401) onLoginRequired('comment');
+        else alert(error.response?.data?.message || 'Failed to post reply');
+      } finally {
+        setSubmittingReply(false);
+      }
+    };
+
     return (
-      <div className={`${isReply ? 'ml-8 mt-3' : ''} ${isReply ? 'border-l-2 border-gray-600 pl-4' : 'border-l-2 border-gray-600 pl-4 py-3 hover:border-blue-500 transition'}`}>
+      <div
+        className={`${
+          depth > 0 ? 'ml-8 mt-3' : ''
+        } border-l-2 border-gray-600 pl-4 py-3 hover:border-blue-500 transition`}
+      >
         <div className="flex items-start gap-3">
           <Avatar username={comment.userId?.username || 'User'} size="sm" />
           <div className="flex-1 min-w-0">
@@ -119,7 +121,7 @@ export default function CommentsSection({
 
             {canReply && user && (
               <button
-                onClick={() => setReplyingTo(replyingTo === comment._id ? null : comment._id)}
+                onClick={() => setShowReplyBox((prev) => !prev)}
                 className="text-blue-400 hover:text-blue-300 text-xs font-medium transition"
               >
                 Reply
@@ -128,8 +130,7 @@ export default function CommentsSection({
           </div>
         </div>
 
-        {/* Reply form */}
-        {replyingTo === comment._id && (
+        {showReplyBox && (
           <div className="mt-3 ml-11">
             <div className="flex gap-2">
               <textarea
@@ -140,15 +141,15 @@ export default function CommentsSection({
               />
               <div className="flex flex-col gap-2">
                 <button
-                  onClick={() => handleReplySubmit(comment._id)}
-                  disabled={!replyText.trim()}
+                  onClick={handleReplySubmit}
+                  disabled={!replyText.trim() || submittingReply}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm disabled:opacity-50 transition"
                 >
                   Reply
                 </button>
                 <button
                   onClick={() => {
-                    setReplyingTo(null);
+                    setShowReplyBox(false);
                     setReplyText('');
                   }}
                   className="text-gray-400 hover:text-gray-300 px-3 py-2 rounded-lg text-sm transition"
@@ -164,7 +165,7 @@ export default function CommentsSection({
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-3">
             {comment.replies.map((reply) => (
-              <CommentItem key={reply._id} comment={reply} isReply={true} depth={depth + 1} />
+              <CommentItem key={reply._id} comment={reply} depth={depth + 1} />
             ))}
           </div>
         )}
@@ -210,7 +211,9 @@ export default function CommentsSection({
 
       <div className="space-y-4 mt-6">
         {comments.length === 0 ? (
-          <p className="text-gray-400 text-center py-4">No comments yet. Be the first to comment!</p>
+          <p className="text-gray-400 text-center py-4">
+            No comments yet. Be the first to comment!
+          </p>
         ) : (
           comments.map((comment) => (
             <CommentItem key={comment._id} comment={comment} />
