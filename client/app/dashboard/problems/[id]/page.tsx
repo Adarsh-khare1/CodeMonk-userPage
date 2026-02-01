@@ -9,6 +9,7 @@ import CommentsSection from '@/components/CommentsSection';
 import CodeEditor from '@/components/CodeEditor';
 import SubmissionResult from '@/components/SubmissionResult';
 import { getStarterCode } from '@/lib/languageTemplates';
+import Loader from '@/components/Loader';
 
 interface Problem {
   _id: string;
@@ -135,9 +136,7 @@ export default function ProblemDetail() {
 
   if (loading || !problem) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
-      </div>
+     <Loader />
     );
   }
 

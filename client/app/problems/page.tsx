@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
 import api from "@/lib/api";
+import Loader from "@/components/Loader";
 
 interface Problem {
   _id: string;
@@ -85,9 +86,8 @@ export default function ProblemsPage() {
           </div>
         </div>
 
-        {loading && (
-          <div className="text-center text-gray-400 py-4">Loading...</div>
-        )}
+     {loading && <Loader />}
+
 
         <div className="space-y-2">
           {problems.map((problem) => (

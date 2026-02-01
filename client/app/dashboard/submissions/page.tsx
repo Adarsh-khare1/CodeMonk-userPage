@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
+import Loader from '@/components/Loader';
 
 interface MySubmission {
   problemId: string;
@@ -68,9 +69,7 @@ export default function DashboardSubmissionsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        Loading...
-      </div>
+      <Loader />
     );
   }
 

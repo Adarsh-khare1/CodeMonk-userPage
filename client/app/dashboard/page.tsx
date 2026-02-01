@@ -11,6 +11,7 @@ import ActivityHeatmap from '@/components/ActivityHeatmap';
 import PlatformCard from '@/components/PlatformCard';
 import { StreakCards, StatsSummary } from '@/components/StatsCards';
 import { useDashboardData } from '@/lib/hooks/useDashboardData';
+import Loader from '@/components/Loader';
 
 interface ExternalProfiles {
   leetcode: { username: string; solved: number; rating: number };
@@ -73,7 +74,7 @@ export default function Dashboard() {
       : [];
 
   if (authLoading || dataLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <Loader />;
   }
 
   if (!authUser || !analytics) {

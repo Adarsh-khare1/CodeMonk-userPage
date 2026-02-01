@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
-import { Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, AlertCircle,} from 'lucide-react';
+import Loader from '@/components/Loader';
 
 interface PastSubmission {
   _id: string;
@@ -81,9 +82,9 @@ export default function PastSubmissions({ problemId, user, onSelectSubmission }:
 
   if (loading) {
     return (
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-sm text-gray-400">
-        Loading...
-      </div>
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 flex justify-center">
+      <Loader />
+    </div>
     );
   }
 

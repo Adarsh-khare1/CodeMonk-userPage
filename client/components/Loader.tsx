@@ -1,28 +1,39 @@
-import { motion, AnimatePresence } from "framer-motion";
+// components/Loader.tsx
+"use client";
 
-export default function Loader() {
-  return (
-    <AnimatePresence>
-      <motion.div
-        key="loader"
-        className="fixed inset-0 z-[9999] flex items-center justify-center bg-white pointer-events-none"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.35, ease: "easeInOut" }}
-      >
-        <motion.img
-          src="/CodeLogo2.png"
-          alt="CodeMonk"
-          className="h-16 w-auto select-none"
-          animate={{ scale: [1, 1.06, 1] }}
-          transition={{
-            duration: 2,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      </motion.div>
-    </AnimatePresence>
-  );
+import "./loader.css";
+
+interface LoaderProps {
+  fadingOut?: boolean;
 }
+
+const Loader = ({ fadingOut = false }: LoaderProps) => {
+  return (
+    <div className={`loader-wrapper ${fadingOut ? "fade-out" : ""}`}>
+      <div className="body">
+        <span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+
+        <div className="base">
+          <span></span>
+          <div className="face"></div>
+        </div>
+      </div>
+
+      <div className="longfazers">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+
+      <h1>Redirecting</h1>
+    </div>
+  );
+};
+
+export default Loader;

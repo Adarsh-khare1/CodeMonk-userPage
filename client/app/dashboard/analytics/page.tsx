@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
 import { StreakCards, StatsSummary } from '@/components/StatsCards';
+import Loader from '@/components/Loader';
 
 interface Analytics {
   streak: {
@@ -94,7 +95,7 @@ export default function Analytics() {
       : [];
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <Loader />;
   }
 
   if (!authUser || !analytics) return null;

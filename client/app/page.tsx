@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
+import Loader from '@/components/Loader';
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -20,10 +21,7 @@ export default function Home() {
   // Show loading while auth state initializes
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black/30">
-        {/* Optional: Replace text with spinner for better UX */}
-        <div className="text-xl text-white">Loading...</div>
-      </div>
+      <Loader />
     );
   }
 

@@ -5,13 +5,14 @@ import { useAuth } from '@/lib/auth-context';
 import { useParams, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
-import { Play } from 'lucide-react';
+import {Play } from 'lucide-react';
 import LoginModal from '@/components/LoginModal';
 import CommentsSection from '@/components/CommentsSection';
 import CodeEditor from '@/components/CodeEditor';
 import SubmissionResult from '@/components/SubmissionResult';
 import PastSubmissions from '@/components/PastSubmissions';
 import { getStarterCode } from '@/lib/languageTemplates';
+import Loader from '@/components/Loader';
 
 // ---------------- TYPES ----------------
 
@@ -209,13 +210,13 @@ const handleSubmit = async () => {
 
   // ---------------- LOADING ----------------
 
-  if (authLoading || !problem) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        Loading...
-      </div>
-    );
-  }
+if (authLoading || !problem) {
+  return (
+    <div className="animate-fadeOut">
+      <Loader />
+    </div>
+  );
+}
 
   // ---------------- UI ----------------
 

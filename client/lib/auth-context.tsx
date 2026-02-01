@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Must contain _id, username, email
       const user: User = {
-        _id: data.user._id,
+        _id: data.user.id,
         username: data.user.username,
         email: data.user.email,
       };
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const user: User = {
-        _id: data.user._id,
+        _id: data.user.id,
         username: data.user.username,
         email: data.user.email,
       };
