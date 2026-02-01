@@ -65,11 +65,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Must contain _id, username, email
-      const user: User = {
-        _id: data.user._id,
-        username: data.user.username,
-        email: data.user.email,
-      };
+     const user: User = {
+  _id: data.user.id,
+  username: data.user.username,
+  email: data.user.email,
+};
+
 
       setUser(user);
       setToken(data.token);
@@ -102,10 +103,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const user: User = {
-        _id: data.user._id,
-        username: data.user.username,
-        email: data.user.email,
-      };
+  _id: data.user.id,
+  username: data.user.username,
+  email: data.user.email,
+};
+
 
       setUser(user);
       setToken(data.token);
